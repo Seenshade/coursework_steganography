@@ -1,13 +1,20 @@
 #include "wav.h"
+#include "metrics.h"
 
 #include <iostream>
 #include <fstream>
 #include <ostream>
 #include <bitset>
 #include <exception>
+#include <iomanip>
+#include <cmath>
 
 WAV::~WAV() {
 	wav_data.clear();
+}
+
+uint32_t WAV::GetWavDataSize() const {
+	return header.subchunk2size;
 }
 
 void WAV::ReadWavData(std::ifstream &input) {
@@ -23,21 +30,64 @@ void WAV::ReadWavData(std::ifstream &input) {
 }
 
 void WAV::PrintWavInfo() {
-	std::cout << "------------------------\n"
-	          << "Type: " << header.chunk_id << "\n"
-	          << "Chunk size: " << header.chunk_size << " bytes\n"
-	          << "Format: " << header.format << "\n"
-	          << "Subchank1id: " << header.subchunk1id << "\n"
-	          << "subchank1size: " << header.subchunk1size << " bytes\n"
-	          << "audio format: " << header.audio_format << "\n"
-	          << "number channels: " << header.num_channels << "\n"
-	          << "sample rate: " << header.sample_rate << " Hz\n"
-	          << "byte rate: " << header.byte_rate << "\n"
-	          << "block align: " << header.block_align << " bytes\n"
-	          << "bits per sample: " << header.bits_per_sample << " bits\n"
-	          << "subchunk2id: " << header.subchunk2id << "\n"
-	          << "subchank2size: " << header.subchunk2size << " bytes\n"
-	          << "------------------------\n";
+	std::string horizontal_line(33, char(205));
+	std::string upper_horizontal_line = horizontal_line;
+	std::string lower_horizontal_line = horizontal_line;
+	upper_horizontal_line[0] = char(201);
+	upper_horizontal_line[32] = char(187);
+	upper_horizontal_line[16] = char(203);
+	lower_horizontal_line[0] = char(200);
+	lower_horizontal_line[16] = char(202);
+	lower_horizontal_line[32] = char(188);
+	horizontal_line[0] = char(204);
+	horizontal_line[16] = char(206);
+	horizontal_line[32] = char(185);
+	std::cout << std::left << upper_horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "Type" << char(186) << std::setw(15) << header.chunk_id << char(186)
+	          << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "Chunk size" << char(186) << std::setw(15)
+	          << std::to_string(header.chunk_size) + " bytes" << char(186)
+	          << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "Format" << char(186) << std::setw(15) << header.format << char(186)
+	          << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "Subchank1id" << char(186) << std::setw(15) << header.subchunk1id
+	          << char(186) << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "subchank1size" << char(186) << std::setw(15)
+	          << std::to_string(header.subchunk1size) + " bytes" << char(186) << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "Audio format" << char(186) << std::setw(15) << header.audio_format
+	          << char(186) << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "Number channels" << char(186) << std::setw(15) << header.num_channels
+	          << char(186) << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "Sample rate" << char(186) << std::setw(15)
+	          << std::to_string(header.sample_rate) + " Hz" << char(186) << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "Byte rate" << char(186) << std::setw(15) << header.byte_rate << char(186)
+	          << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "block align" << char(186) << std::setw(15)
+	          << std::to_string(header.block_align) + " bytes" << char(186) << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "bits per sample" << char(186) << std::setw(15)
+	          << std::to_string(header.bits_per_sample) + " bits" << char(186) << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "subchunk2id" << char(186) << std::setw(15) << header.subchunk2id
+	          << char(186) << "\n"
+	          << horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "subchank2size" << char(186) << std::setw(15)
+	          << std::to_string(header.subchunk2size) + " bytes" << char(186) << "\n"
+	          << lower_horizontal_line << "\n";
+	std::cout << upper_horizontal_line << "\n"
+	          << char(186) << std::setw(15) << "duration" << char(186) << std::setw(15)
+	          << std::to_string(header.minutes_duration) + "m" + std::to_string(header.seconds_duration)+"s" << char(186)
+	          << "\n"
+	          << lower_horizontal_line << "\n";
 }
 
 void WAV::PrintWavData() {
@@ -78,7 +128,7 @@ void WAV::WriteMessageToWAV(const std::string &message) {
 	std::string err = "Wav file not enough bytes to hide this message\n";
 	err.append("Available bytes to write: " + std::to_string(wav_data.size()) + "\n");
 	err.append("Message size: " + std::to_string(message.length()) + "\n");
-	if (message.length() * 8 > wav_data.size()) {
+	if (message.length() > wav_data.size() / 8) {
 		throw std::invalid_argument(err);
 	}
 	auto it = wav_data.begin();
@@ -141,6 +191,9 @@ void WAV::ReadHeader(std::ifstream &input) {
 	header.subchunk2id[4] = '\0';
 	input.read(buffer, 4);
 	header.subchunk2size = Get4BytesNumberFromHeader(buffer);
+	float fDurationSeconds = 1.f * header.subchunk2size / (header.bits_per_sample / 8) / header.num_channels / header.sample_rate;
+	header.minutes_duration = (int) std::floor(fDurationSeconds) / 60;
+	header.seconds_duration = fDurationSeconds - (header.minutes_duration * 60);
 	wav_data.reserve(header.subchunk2size / 4);
 }
 

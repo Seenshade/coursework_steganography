@@ -17,6 +17,9 @@ struct WavHeader {
 	uint32_t bits_per_sample;
 	char subchunk2id[5];
 	uint32_t subchunk2size;
+	
+	uint32_t minutes_duration;
+	uint16_t seconds_duration;
 };
 
 template<typename T>
@@ -37,6 +40,7 @@ public:
 	void WriteMessageToWAV(const std::string &message);
 	std::string GetMessageFromWAV(std::ifstream &input, size_t n);
 	void ReadWavData(std::ifstream &input);
+	uint32_t GetWavDataSize() const;
 	
 private:
 	void WriteData(std::ofstream &output);
